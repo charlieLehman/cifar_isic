@@ -95,7 +95,6 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       step = 0
       while step < num_iter and not coord.should_stop():
         predictions = sess.run([top_k_op])
-        images, labels = cifar10.inputs(eval_data=eval_data)
         true_count += np.sum(predictions)
         step += 1
 
@@ -103,7 +102,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       precision = true_count / total_sample_count
       print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
       print(predictions)
-      print(labels)
+      print(sess.run(labels))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
