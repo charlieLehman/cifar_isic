@@ -120,6 +120,7 @@ def evaluate():
     # Get images and labels for CIFAR-10.
     eval_data = FLAGS.eval_data == 'test'
     images, labels = cifar10.inputs(eval_data=eval_data)
+    print(labels)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
