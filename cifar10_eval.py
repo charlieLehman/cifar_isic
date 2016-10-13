@@ -95,7 +95,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       step = 0
       while step < num_iter and not coord.should_stop():
         predictions = sess.run([top_k_op])
-        labels = sess.run([labels])
+        images, labels = cifar10.inputs(eval_data=eval_data)
         true_count += np.sum(predictions)
         step += 1
 
