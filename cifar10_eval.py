@@ -95,6 +95,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       step = 0
       while step < num_iter and not coord.should_stop():
         predictions = sess.run([top_k_op])
+        labels = sess.run([labels])
         true_count += np.sum(predictions)
         step += 1
 
@@ -102,6 +103,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       precision = true_count / total_sample_count
       print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
       print(predictions)
+      print(labels)
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
@@ -120,7 +122,6 @@ def evaluate():
     # Get images and labels for CIFAR-10.
     eval_data = FLAGS.eval_data == 'test'
     images, labels = cifar10.inputs(eval_data=eval_data)
-    print(labels)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
