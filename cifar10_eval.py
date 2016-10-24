@@ -1,4 +1,4 @@
- Copyright 2015 The TensorFlow Authors. All Rights Reserved.
+#Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,6 +127,7 @@ def evaluate():
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
+    ss = tf.contrib.metrics.streaming_specificity_at_sensitivity( logits, labels,.5)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
