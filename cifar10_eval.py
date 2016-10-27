@@ -41,7 +41,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.models.image.cifar10 import cifar10
+import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -127,7 +127,7 @@ def evaluate():
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
-    ss = tf.contrib.metrics.streaming_specificity_at_sensitivity( logits, labels,.5)
+    #ss = tf.contrib.metrics.streaming_specificity_at_sensitivity( logits, labels,.5)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
