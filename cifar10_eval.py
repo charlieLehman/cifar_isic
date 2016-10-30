@@ -53,13 +53,13 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
                            """Directory where to read model checkpoints.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                             """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 10000,
+tf.app.flags.DEFINE_integer('num_examples', 500,
                             """Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
 
 
-def eval_once(saver, summary_writer, top_k_op, summary_op):
+def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn):
   """Run Eval once.
 
   Args:
@@ -90,18 +90,39 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
                                          start=True))
 
       num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
+      tp_count = 0
+      fp_count = 0
+      tn_count = 0
+      fn_count = 0
       true_count = 0  # Counts the number of correct predictions.
       total_sample_count = num_iter * FLAGS.batch_size
       step = 0
       while step < num_iter and not coord.should_stop():
         predictions = sess.run([top_k_op])
+        tp_pred = sess.run([tp])
+        fp_pred = sess.run([fp])
+        tn_pred = sess.run([tn])
+        fn_pred = sess.run([fn])
+
+        tp_count += np.sum(tp_pred)
+        fp_count += np.sum(fp_pred)
+        tn_count += np.sum(tn_pred)
+        fn_count += np.sum(fn_pred)
         true_count += np.sum(predictions)
+
         step += 1
 
       # Compute precision @ 1.
       precision = true_count / total_sample_count
+      sensitivity = tp_count/(tp_count+fn_count)
+      specificity = tn_count/(tn_count+fp_count)
       print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-      print(predictions)
+      print('%s: sensitivity @ 1 = %.3f' % (datetime.now(), sensitivity))
+      print('%s: specificity @ 1 = %.3f' % (datetime.now(), specificity))
+      print('%s: True Pos @ 1 = %i' % (datetime.now(), tp_count))
+      print('%s: False Pos @ 1 = %i' % (datetime.now(), fp_count))
+      print('%s: True Neg @ 1 = %i' % (datetime.now(), tn_count))
+      print('%s: False Neg @ 1 = %i' % (datetime.now(), fn_count))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
@@ -127,7 +148,7 @@ def evaluate():
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
-    #ss = tf.contrib.metrics.streaming_specificity_at_sensitivity( logits, labels,.5)
+    tp, fp, tn, fn = binary_score(logits, labels)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
@@ -141,10 +162,42 @@ def evaluate():
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op)
+      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
+
+def binary_score(logits,labels):
+# Step 1:
+# Let's create 2 vectors that will contain boolean values, and will describe our labels
+    is_label_one = tf.cast(labels, dtype=tf.bool)
+    is_label_zero = tf.logical_not(is_label_one)
+# Imagine that labels = [0,1]
+# Then
+# is_label_one = [False,True]
+# is_label_zero = [True,False]
+
+# Step 2:
+# get the prediction and false prediction vectors. correct_prediction is something that you choose within your model.
+    correct_prediction = tf.nn.in_top_k(logits, labels, 1, name="correct_answers")
+    false_prediction = tf.logical_not(correct_prediction)
+
+# Step 3:
+# get the 4 metrics by comparing boolean vectors
+# TRUE POSITIVES
+    true_positives = tf.reduce_sum(tf.to_int32(tf.logical_and(correct_prediction,is_label_one)))
+
+# FALSE POSITIVES
+    false_positives = tf.reduce_sum(tf.to_int32(tf.logical_and(false_prediction, is_label_zero)))
+
+# TRUE NEGATIVES
+    true_negatives = tf.reduce_sum(tf.to_int32(tf.logical_and(correct_prediction, is_label_zero)))
+
+# FALSE NEGATIVES
+    false_negatives = tf.reduce_sum(tf.to_int32(tf.logical_and(false_prediction, is_label_one)))
+
+
+    return true_positives, false_positives, true_negatives, false_negatives
 
 
 def main(argv=None):  # pylint: disable=unused-argument
