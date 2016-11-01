@@ -13,23 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Evaluation for CIFAR-10.
-
-Accuracy:
-cifar10_train.py achieves 83.0% accuracy after 100K steps (256 epochs
-of data) as judged by cifar10_eval.py.
-
-Speed:
-On a single Tesla K40, cifar10_train.py processes a single batch of 128 images
-in 0.25-0.35 sec (i.e. 350 - 600 images /sec). The model reaches ~86%
-accuracy after 100K steps in 8 hours of training time.
-
-Usage:
-Please see the tutorial and website for how to download the CIFAR-10
-data set, compile the program and train the model.
-
-http://tensorflow.org/tutorials/deep_cnn/
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -53,7 +36,7 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
                            """Directory where to read model checkpoints.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                             """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 500,
+tf.app.flags.DEFINE_integer('num_examples', 5000,
                             """Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
@@ -112,7 +95,6 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn):
 
         step += 1
 
-      # Compute precision @ 1.
       precision = true_count / total_sample_count
       sensitivity = tp_count/(tp_count+fn_count)
       specificity = tn_count/(tn_count+fp_count)
@@ -168,34 +150,14 @@ def evaluate():
       time.sleep(FLAGS.eval_interval_secs)
 
 def binary_score(logits,labels):
-# Step 1:
-# Let's create 2 vectors that will contain boolean values, and will describe our labels
     is_label_one = tf.cast(labels, dtype=tf.bool)
     is_label_zero = tf.logical_not(is_label_one)
-# Imagine that labels = [0,1]
-# Then
-# is_label_one = [False,True]
-# is_label_zero = [True,False]
-
-# Step 2:
-# get the prediction and false prediction vectors. correct_prediction is something that you choose within your model.
     correct_prediction = tf.nn.in_top_k(logits, labels, 1, name="correct_answers")
     false_prediction = tf.logical_not(correct_prediction)
-
-# Step 3:
-# get the 4 metrics by comparing boolean vectors
-# TRUE POSITIVES
     true_positives = tf.reduce_sum(tf.to_int32(tf.logical_and(correct_prediction,is_label_one)))
-
-# FALSE POSITIVES
     false_positives = tf.reduce_sum(tf.to_int32(tf.logical_and(false_prediction, is_label_zero)))
-
-# TRUE NEGATIVES
     true_negatives = tf.reduce_sum(tf.to_int32(tf.logical_and(correct_prediction, is_label_zero)))
-
-# FALSE NEGATIVES
     false_negatives = tf.reduce_sum(tf.to_int32(tf.logical_and(false_prediction, is_label_one)))
-
 
     return true_positives, false_positives, true_negatives, false_negatives
 
