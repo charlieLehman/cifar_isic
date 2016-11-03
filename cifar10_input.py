@@ -146,8 +146,8 @@ def distorted_inputs(data_dir, batch_size):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
-               for i in xrange(1, 18)]
+  filenames = [os.path.join(data_dir, 'bin_256_%d.bin' % i)
+               for i in xrange(0, 8)]
   for f in filenames:
     if not tf.gfile.Exists(f):
       raise ValueError('Failed to find file: ' + f)
@@ -207,12 +207,12 @@ def inputs(eval_data, data_dir, batch_size):
     labels: Labels. 1D tensor of [batch_size] size.
   """
   if not eval_data:
-    filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
-                 for i in xrange(1, 18)]
+    filenames = [os.path.join(data_dir, 'bin_256_%d.bin' % i)
+                 for i in xrange(0, 8)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
   else:
-    filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
-                 for i in xrange(19, 22)]
+    filenames = [os.path.join(data_dir, 'bin_256_%d.bin' % i)
+                 for i in xrange(9, 13)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
   for f in filenames:

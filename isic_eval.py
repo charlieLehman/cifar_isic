@@ -88,6 +88,8 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess):
         tn_pred = sess.run([tn])
         fn_pred = sess.run([fn])
 
+        print(guesses)
+        print(predictions)
         tp_count += np.sum(tp_pred)
         fp_count += np.sum(fp_pred)
         tn_count += np.sum(tn_pred)
