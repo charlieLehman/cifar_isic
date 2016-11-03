@@ -28,12 +28,14 @@ import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
+tf.app.flags.DEFINE_string('eval_dir', '/home/charlie/martin/cifar10_eval',
                            """Directory where to write event logs.""")
 tf.app.flags.DEFINE_string('eval_data', 'test',
                            """Either 'test' or 'train_eval'.""")
-tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
-                           """Directory where to read model checkpoints.""")
+tf.app.flags.DEFINE_string('RGB_dir', '/home/charlie/martin/isic_dataset/RGB/cifar10_train',
+                           """Directory where to read RGB model checkpoints.""")
+tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/martin/isic_dataset/FFT/cifar10_train',
+                           """Directory where to read FFT model checkpoints.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                             """How often to run the eval.""")
 tf.app.flags.DEFINE_integer('num_examples', 5000,
@@ -42,7 +44,7 @@ tf.app.flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
 
 
-def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess):
+def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits):
   """Run Eval once.
 
   Args:
@@ -82,14 +84,14 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess):
       step = 0
       while step < num_iter and not coord.should_stop():
         guesses = sess.run([guess])
+        logit_stream = sess.run([logits])
         predictions = sess.run([top_k_op])
         tp_pred = sess.run([tp])
         fp_pred = sess.run([fp])
         tn_pred = sess.run([tn])
         fn_pred = sess.run([fn])
 
-        print(guesses)
-        print(predictions)
+        print(logit_stream)
         tp_count += np.sum(tp_pred)
         fp_count += np.sum(fp_pred)
         tn_count += np.sum(tn_pred)
@@ -148,7 +150,7 @@ def evaluate():
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess)
+      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
