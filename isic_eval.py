@@ -28,23 +28,27 @@ import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('eval_dir', '/home/charlie/martin/cifar10_eval',
+tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
                            """Directory where to write event logs.""")
+
+tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
+                           """Directory where to read RGB model checkpoints.""")
+tf.app.flags.DEFINE_string('RGB_dir', '/home/charlie/cifar_isic_checkpoints/RGB_train',
+                           """Directory where to read RGB model checkpoints.""")
+tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/martin/cropped/FFT/cifar10_train',
+                           """Directory where to read FFT model checkpoints.""")
+
 tf.app.flags.DEFINE_string('eval_data', 'test',
                            """Either 'test' or 'train_eval'.""")
-tf.app.flags.DEFINE_string('RGB_dir', '/home/charlie/martin/isic_dataset/RGB/cifar10_train',
-                           """Directory where to read RGB model checkpoints.""")
-tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/martin/isic_dataset/FFT/cifar10_train',
-                           """Directory where to read FFT model checkpoints.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                             """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 5000,
+tf.app.flags.DEFINE_integer('num_examples', 500,
                             """Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
 
 
-def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits):
+def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits, model_ckpt):
   """Run Eval once.
 
   Args:
@@ -54,9 +58,10 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
     summary_op: Summary op.
   """
   with tf.Session() as sess:
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    ckpt = tf.train.get_checkpoint_state(model_ckpt)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
+      print(ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
       # Assuming model_checkpoint_path looks something like:
       #   /my-favorite-path/cifar10_train/model.ckpt-0,
@@ -91,7 +96,6 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
         tn_pred = sess.run([tn])
         fn_pred = sess.run([fn])
 
-        print(logit_stream)
         tp_count += np.sum(tp_pred)
         fp_count += np.sum(fp_pred)
         tn_count += np.sum(tn_pred)
@@ -122,11 +126,11 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
     coord.join(threads, stop_grace_period_secs=10)
 
 
-def evaluate():
+def evaluate(dataflag):
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
-    eval_data = FLAGS.eval_data == 'test'
+    eval_data = dataflag == 'test'
     images, labels = cifar10.inputs(eval_data=eval_data)
 
     # Build a Graph that computes the logits predictions from the
@@ -150,7 +154,7 @@ def evaluate():
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits)
+      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits, FLAGS.FFT_dir)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
@@ -169,11 +173,10 @@ def binary_score(logits,labels):
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  cifar10.maybe_download_and_extract()
   if tf.gfile.Exists(FLAGS.eval_dir):
     tf.gfile.DeleteRecursively(FLAGS.eval_dir)
   tf.gfile.MakeDirs(FLAGS.eval_dir)
-  evaluate()
+  evaluate(FLAGS.eval_data)
 
 
 if __name__ == '__main__':
