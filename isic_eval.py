@@ -1,5 +1,4 @@
-#Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
+#Copyright 2015 The TensorFlow Authors. All Rights Reserved.  #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -30,25 +29,25 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
                            """Directory where to write event logs.""")
-
 tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
                            """Directory where to read RGB model checkpoints.""")
 tf.app.flags.DEFINE_string('RGB_dir', '/home/charlie/cifar_isic_checkpoints/RGB_train',
                            """Directory where to read RGB model checkpoints.""")
-tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/martin/cropped/FFT/cifar10_train',
+tf.app.flags.DEFINE_string('FFT_dir', '/home/charlie/cifar_isic_checkpoints/FFT_train',
                            """Directory where to read FFT model checkpoints.""")
-
+tf.app.flags.DEFINE_string('HSV_dir', '/home/charlie/cifar_isic_checkpoints/HSV_train',
+                           """Directory where to read HSV model checkpoints.""")
 tf.app.flags.DEFINE_string('eval_data', 'test',
                            """Either 'test' or 'train_eval'.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                             """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 500,
+tf.app.flags.DEFINE_integer('num_examples', 1500,
                             """Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
 
 
-def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits, model_ckpt):
+def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, labels, logits, model_ckpt):
   """Run Eval once.
 
   Args:
@@ -61,7 +60,6 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
     ckpt = tf.train.get_checkpoint_state(model_ckpt)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
-      print(ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
       # Assuming model_checkpoint_path looks something like:
       #   /my-favorite-path/cifar10_train/model.ckpt-0,
@@ -87,10 +85,14 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
       true_count = 0  # Counts the number of correct predictions.
       total_sample_count = num_iter * FLAGS.batch_size
       step = 0
+      predictions = []
+      label_stream = []
       while step < num_iter and not coord.should_stop():
-        guesses = sess.run([guess])
+
         logit_stream = sess.run([logits])
-        predictions = sess.run([top_k_op])
+        label_stream.append(sess.run([labels]))
+        predictions.append(sess.run([top_k_op]))
+
         tp_pred = sess.run([tp])
         fp_pred = sess.run([fp])
         tn_pred = sess.run([tn])
@@ -100,20 +102,25 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, l
         fp_count += np.sum(fp_pred)
         tn_count += np.sum(tn_pred)
         fn_count += np.sum(fn_pred)
+
         true_count += np.sum(predictions)
 
         step += 1
+      
+      np.savetxt("labelsHSV.csv", label_stream,fmt='%s', delimiter=",")
+      np.savetxt("predictionsHSV.csv", predictions,fmt='%s', delimiter=",")
+      print(np.shape(label_stream))
 
       precision = true_count / total_sample_count
       sensitivity = tp_count/(tp_count+fn_count)
       specificity = tn_count/(tn_count+fp_count)
-      print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-      print('%s: sensitivity @ 1 = %.3f' % (datetime.now(), sensitivity))
-      print('%s: specificity @ 1 = %.3f' % (datetime.now(), specificity))
-      print('%s: True Pos @ 1 = %i' % (datetime.now(), tp_count))
-      print('%s: False Pos @ 1 = %i' % (datetime.now(), fp_count))
-      print('%s: True Neg @ 1 = %i' % (datetime.now(), tn_count))
-      print('%s: False Neg @ 1 = %i' % (datetime.now(), fn_count))
+      print('%s: precision = %.3f' % (datetime.now(), precision))
+      print('%s: sensitivity = %.3f' % (datetime.now(), sensitivity))
+      print('%s: specificity = %.3f' % (datetime.now(), specificity))
+      print('%s: True Pos = %i' % (datetime.now(), tp_count))
+      print('%s: False Pos = %i' % (datetime.now(), fp_count))
+      print('%s: True Neg = %i' % (datetime.now(), tn_count))
+      print('%s: False Neg = %i' % (datetime.now(), fn_count))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
@@ -135,8 +142,7 @@ def evaluate(dataflag):
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    guess = cifar10.inference(images)
-    logits = tf.nn.softmax(guess)
+    logits = tf.nn.softmax(cifar10.inference(images))
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
@@ -154,7 +160,7 @@ def evaluate(dataflag):
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, guess, logits, FLAGS.FFT_dir)
+      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, labels, logits, FLAGS.HSV_dir)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)

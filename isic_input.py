@@ -32,7 +32,7 @@ IMAGE_SIZE = 220
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 2
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10000
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 2000
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 600
 
 
 def read_cifar10(filename_queue):
@@ -114,7 +114,7 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
   """
   # Create a queue that shuffles the examples, and then
   # read 'batch_size' images + labels from the example queue.
-  num_preprocess_threads = 32 
+  num_preprocess_threads = 1 
   if shuffle:
     images, label_batch = tf.train.shuffle_batch(
         [image, label],
@@ -146,7 +146,7 @@ def distorted_inputs(data_dir, batch_size):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  filenames = [os.path.join(data_dir, 'bin_FFT_%d.bin' % i)
+  filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
                for i in xrange(0, 8)]
   for f in filenames:
     if not tf.gfile.Exists(f):
@@ -191,7 +191,7 @@ def distorted_inputs(data_dir, batch_size):
   # Generate a batch of images and labels by building up a queue of examples.
   return _generate_image_and_label_batch(float_image, read_input.label,
                                          min_queue_examples, batch_size,
-                                         shuffle=True)
+                                         shuffle=False)
 
 
 def inputs(eval_data, data_dir, batch_size):
@@ -207,11 +207,11 @@ def inputs(eval_data, data_dir, batch_size):
     labels: Labels. 1D tensor of [batch_size] size.
   """
   if not eval_data:
-    filenames = [os.path.join(data_dir, 'bin_FFT_%d.bin' % i)
+    filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
                  for i in xrange(0, 8)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
   else:
-    filenames = [os.path.join(data_dir, 'bin_FFT_%d.bin' % i)
+    filenames = [os.path.join(data_dir, 'bin_HSV_%d.bin' % i)
                  for i in xrange(9, 13)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
@@ -238,11 +238,11 @@ def inputs(eval_data, data_dir, batch_size):
   float_image = tf.image.per_image_whitening(resized_image)
 
   # Ensure that the random shuffling has good mixing properties.
-  min_fraction_of_examples_in_queue = 0.2
+  min_fraction_of_examples_in_queue = 0.0
   min_queue_examples = int(num_examples_per_epoch *
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
   return _generate_image_and_label_batch(float_image, read_input.label,
                                          min_queue_examples, batch_size,
-                                         shuffle=True)
+                                         shuffle=False)
