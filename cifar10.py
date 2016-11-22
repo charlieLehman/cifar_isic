@@ -49,9 +49,9 @@ import isic_input
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 10,
+tf.app.flags.DEFINE_integer('batch_size', 8,
                             """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/home/charlie/cifar_isic_checkpoints/HSV_data',
+tf.app.flags.DEFINE_string('data_dir', '/home/charlie/cifar_isic_checkpoints/FFT_data',
                            """Path to the CIFAR-10 data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
@@ -210,6 +210,18 @@ def inference(images):
     bias = tf.nn.bias_add(conv, biases)
     conv1 = tf.nn.relu(bias, name=scope.name)
     _activation_summary(conv1)
+
+  with tf.variable_scope('visualization'):
+    # scale weights to [0 1], type is still float
+    x_min = tf.reduce_min(kernel)
+    x_max = tf.reduce_max(kernel)
+    kernel_0_to_1 = (kernel - x_min) / (x_max - x_min)
+
+    # to tf.image_summary format [batch_size, height, width, channels]
+    kernel_transposed = tf.transpose (kernel_0_to_1, [3, 0, 1, 2])
+
+    # this will display random 3 filters from the 64 in conv1
+    tf.image_summary('conv1/filters', kernel_transposed, max_images=3)
 
   # pool1
   pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],

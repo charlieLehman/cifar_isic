@@ -107,8 +107,8 @@ def eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, labels, 
 
         step += 1
       
-      np.savetxt("labelsHSV.csv", label_stream,fmt='%s', delimiter=",")
-      np.savetxt("predictionsHSV.csv", predictions,fmt='%s', delimiter=",")
+      np.savetxt("labelsRGB_60k.csv", label_stream,fmt='%s', delimiter=",")
+      np.savetxt("predictionsRGB_60k.csv", predictions,fmt='%s', delimiter=",")
       print(np.shape(label_stream))
 
       precision = true_count / total_sample_count
@@ -160,7 +160,7 @@ def evaluate(dataflag):
     summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, labels, logits, FLAGS.HSV_dir)
+      eval_once(saver, summary_writer, top_k_op, summary_op, tp,fp,tn,fn, labels, logits, FLAGS.RGB_dir)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
